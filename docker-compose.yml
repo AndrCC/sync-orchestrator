@@ -1,0 +1,48 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    environment:
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+
+  worker:
+    build:
+      context: ./apps/worker
+      dockerfile: Dockerfile.dev
+    environment:
+      REDIS_URL: redis://redis:6379
+      WORKER_CONCURRENCY: 8
+    depends_on:
+      - redis
+    volumes:
+      - ./apps/worker:/app
+      - /app/node_modules
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    environment:
+      # para o Vite proxy apontar pro serviço "api" dentro da rede do compose
+      VITE_PROXY_TARGET: http://api:3000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
